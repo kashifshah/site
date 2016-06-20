@@ -1,0 +1,136 @@
+LIUM's SMT Machine Translation Systems for WMT 2011
+Holger Schwenk, Patrik Lambert, Lo¨ ic Barrault, Christophe Servan, Haithem Afli, Sadaf Abdul-Rauf and Kashif Shah LIUM, University of Le Mans 72085 Le Mans cedex 9, FRANCE FirstName.LastName@lium.univ-lemans.fr
+
+Abstract
+This paper describes the development of French­English and English­French statistical machine translation systems for the 2011 WMT shared task evaluation. Our main systems were standard phrase-based statistical systems based on the Moses decoder, trained on the provided data only, but we also performed initial experiments with hierarchical systems. Additional, new features this year include improved translation model adaptation using monolingual data, a continuous space language model and the treatment of unknown words.
+
+2
+
+Resources Used
+
+The following sections describe how the resources provided or allowed in the shared task were used to train the translation and language models of the system. 2.1 Bilingual data
+
+1
+
+Introduction
+
+This paper describes the statistical machine translation systems developed by the Computer Science laboratory at the University of Le Mans (LIUM) for the 2011 WMT shared task evaluation. We only considered the translation between French and English (in both directions). The main differences with respect to previous year's system (Lambert et al., 2010) are as follows: use of more training data as provided by the organizers, improved translation model adaptation by unsupervised training, a continuous space language model for the translation into French, some attempts to automatically induce translations of unknown words and first experiments with hierarchical systems. These different points are described in the rest of the paper, together with a summary of the experimental results showing the impact of each component. 464
+
+Our system was developed in two stages. First, a baseline system was built to generate automatic translations of some of the monolingual data available. These automatic translations were then used directly with the source texts to create additional bitexts. In a second stage, these additional bilingual data were incorporated into the system (see Section 5 and Tables 4 and 5). The latest version of the News-Commentary (NC) corpus and of the Europarl (Eparl) corpus (version 6) were used. We also took as training data a subset of the French­English Gigaword (109 ) corpus. We applied the same filters as last year to select this subset. The first one is a lexical filter based on the IBM model 1 cost (Brown et al., 1993) of each side of a sentence pair given the other side, normalised with respect to both sentence lengths. This filter was trained on a corpus composed of Eparl, NC, and UN data. The other filter is an n-gram language model (LM) cost of the target sentence (see Section 3), normalised with respect to its length. This filter was trained with all monolingual resources available except the 109 data. We generated two subsets, both by selecting sentence pairs with a lexical cost inferior to 4, and an LM cost respectively inferior to 2.3 9 (109 1 , 115 million English words) and 2.6 (102 , 232 million English words).
+
+Proceedings of the 6th Workshop on Statistical Machine Translation, pages 464­469, Edinburgh, Scotland, UK, July 30­31, 2011. c 2011 Association for Computational Linguistics
+
+2.2
+
+Use of Automatic Translations
+
+Available human translated bitexts such as the Europarl or 109 corpus seem to be out-of domain for this task. We used two types of automatically extracted resources to adapt our system to the task domain. First, we generated automatic translations of the provided monolingual News corpus and selected the sentences with a normalised translation cost (returned by the decoder) inferior to a threshold. The resulting bitext contain no new translations, since all words of the translation output come from the translation model, but it contains new combinations (phrases) of known words, and reinforces the probability of some phrase pairs (Schwenk, 2008). This year, we improved this method in the following way. In the original approach, the automatic translations are added to the human translated bitexts and a complete new system is build, including time consuming word alignment with GIZA++. For WMT'11, we directly used the word-to-word alignments produced by the decoder at the output instead of GIZA's alignments. This speeds-up the procedure and yields the same results in our experiments. A detailed comparison is given in (Lambert et al., 2011). Second, as in last year's evaluation, we automatically extracted and aligned parallel sentences from comparable in-domain corpora. We used the AFP and APW news texts since there are available in the French and English LDC Gigaword corpora. The general architecture of our parallel sentence extraction system is described in detail by Abdul-Rauf and Schwenk (2009). We first translated 91M words from French into English using our first stage SMT system. These English sentences were then used to search for translations in the English AFP and APW texts of the Gigaword corpus using information retrieval techniques. The Lemur toolkit (Ogilvie and Callan, 2001) was used for this purpose. Search was limited to a window of ±5 days of the date of the French news text. The retrieved candidate sentences were then filtered using the Translation Error Rate (TER) with respect to the automatic translations. In this study, sentences with a TER below 75% were kept. Sentences with a large length difference (French versus English) or containing a large fraction of numbers were also discarded. By these 465
+
+means, about 27M words of additional bitexts were obtained. 2.3 Monolingual data The French and English target language models were trained on all provided monolingual data. In addition, LDC's Gigaword collection was used for both languages. Data corresponding to the development and test periods were removed from the Gigaword collections. 2.4 Development data All development was done on newstest2009, and newstest2010 was used as internal test set. The default Moses tokenization was used. However, we added abbreviations for the French tokenizer. All our models are case sensitive and include punctuation. The BLEU scores reported in this paper were calculated with the tool multi-bleu.perl and are case sensitive.
+
+3
+
+Architecture of the SMT system
+
+The goal of statistical machine translation (SMT) is to produce a target sentence e from a source sentence f . Our main system is a phrase-based system (Koehn et al., 2003; Och and Ney, 2003), but we have also performed some experiments with a hierarchical system (Chiang, 2007). Both use a log linear framework in order to introduce several models explaining the translation process: e = arg max p(e|f ) = arg max{exp(
+e i
+
+i hi (e, f ))}
+
+(1)
+
+The feature functions hi are the system models and the i weights are typically optimized to maximize a scoring function on a development set (Och and Ney, 2002). The phrase-based system uses fourteen features functions, namely phrase and lexical translation probabilities in both directions, seven features for the lexicalized distortion model, a word and a phrase penalty and a target language model (LM). The hierarchical system uses only 8 features: a LM weight, a word penalty and six weights for the translation model. Both systems are based on the Moses SMT toolkit (Koehn et al., 2007) and constructed as follows.
+
+First, word alignments in both directions are calculated. We used a multi-threaded version of the GIZA++ tool (Gao and Vogel, 2008).1 This speeds up the process and corrects an error of GIZA++ that can appear with rare words. Phrases, lexical reorderings or hierarchical rules are extracted using the default settings of the Moses toolkit. The parameters of Moses were tuned on newstest2009, using the `new' MERT tool. We repeated the training process three times, each with a different seed value for the optimisation algorithm. In this way we have an rough idea of the error introduced by the tuning process. 4-gram back-off LMs were used. The word list contains all the words of the bitext used to train the translation model and all words that appear at least ten times in the monolingual corpora. Words of the monolingual corpora containing special characters or sequences of uppercase characters were not included in the word list. Separate LMs were build on each data source with the SRI LM toolkit (Stolcke, 2002) and then linearly interpolated, optimizing the coefficients with an EM procedure. The perplexities of these LMs were 99.4 for French and 129.7 for English. In addition, we build a 5-gram continuous space language model for French (Schwenk, 2007). This model was trained on all the available French texts using a resampling technique. The continuous space language model is interpolated with the 4-gram back-off model and used to rescore n-best lists. This reduces the perplexity by about 8% relative.
+
+Source language French finies effac´ es hawaienne ...
+
+Source language stemmed form fini effac´ e hawaien ...
+
+Target language English finished erased Hawaiian ...
+
+Table 1: Example of translations from French to English which are automatically extracted from the phrase-table with the stemmed form.
+
+from Arabic to English. Alternatively, we propose to infer automatically possible translations when translating from a morphologically rich language, to a simpler language. In our case, we use this approach to translate from French to English. Several of the unknown words are actually adjectives, nouns or verbs in a particular form that itself is not known, but the phrase table would contain the translation of a different form. As an example we can mention the French adjective finies which is in the female plural form. After stemming we may be able to find the translation in a dictionary which is automatically extracted from the phrase-table (see Table 1). This idea was already outlined by (Bojar and Tamchyna, 2011) to translate from Czech to English. First, we automatically extract a dictionary from the phrase table. This is done, be detecting all 1-to-1 entries in the phrase table. When there are multiple entries, all are kept with their lexical translations probabilities. Our dictionary has about 680k unique source words with a total of almost 1M translations.
+source segment target segment stemmed word found translations found segment proposed segment kept les travaux sont finis works are finis fini finished, ended works are finished works are ended works are finished
+
+4
+
+Treatment of unknown words
+
+Finally, we propose a method to actually add new translations to the system inspired from (Habash, 2008). For this, we propose to identity unknown words and propose possible translations. Moses has two options when encountering an unknown word in the source language: keep it as it is or drop it. The first option may be a good choice for languages that use the same writing system since the unknown word may be a proper name. The second option is usually used when translating between language based on different scripts, e.g. translating
+The source is available at http://www.cs.cmu.edu/ ~qing/
+1
+
+Table 2: Example of the treatment of an unknown French word and its automatically inferred translation.
+
+The detection of unknown words is performed by comparing the source and the target segment in order to detect identical words. Once the unknown word is selected, we are looking for its stemmed form in the dictionary and propose some translations for the unknown word based on lexical score of the phrase table (see Table 2 for some examples). The snowball
+
+466
+
+Bitext
+
+#Fr Words (M) Eparl+NC 56 Eparl+NC+109 186 1 Eparl+NC+109 323 2 Eparl+NC+news 140 Eparl+NC+109 +news 406 2 Eparl+NC+109 351 2 +IR Eparl+NC+109 +news+IR 435 2 +larger beam+pruned PT 435
+
+PT size (M) 7.1 16.3 25.4 8.4 25.5 25.3 26.1 8.2
+
+newstest2009 BLEU 26.74 27.96 28.20 27.31 27.93 28.07 27.99 28.44
+
+BLEU 27.36 (0.19) 28.20 (0.04) 28.57 (0.10) 28.41 (0.13) 28.70 (0.24) 28.51 (0.18) 28.93 (0.02) 29.05 (0.14)
+
+newstest2010 TER 55.11 (0.14) 54.46 (0.10) 54.12 (0.13) 54.15 (0.14) 54.12 (0.16) 54.07 (0.06) 53.84 (0.07) 53.74 (0.16)
+
+METEOR 60.13 (0.05) 60.88 (0.05) 61.20 (0.05) 61.13 (0.04) 61.30 (0.20) 61.18 (0.07) 61.46 (0.07) 61.68 (0.09)
+
+Table 4: French­English results: number of French words (in million), number of entries in the filtered phrase-table (in million) and BLEU scores in the development (newstest2009) and internal test (newstest2010) sets for the different systems developed. The BLEU scores and the number in parentheses are the average and standard deviation over 3 values (see Section 3)
+corpus number of sentences number of words number of UNK detected nbr of sentences containing UNK BLEU Score without UNK process BLEU Score with UNK process TER Score without UNK process TER Score with UNK process newstest2010 2489 70522 118 109 29.43 29.43 53.08 53.08 subtest2010 109 3586 118 109 24.31 24.33 58.54 58.59
+
+smaller amounts of parallel training data. In future versions of this detection process, we will try to detect unknown words before the translation process and propose alternatives hypothesis to the Moses decoder.
+
+5
+
+Results and Discussion
+
+Table 3: Statistics of the unknown word (UNK) processing algorithm on our internal test (newstest2010) and its sub-part containing only the processed sentences (subtest2010).
+
+stemmer2 was used. Then the different hypothesis are evaluated with the target language model. We processed the produced translations with this method. It can happen that some words are translations of themselves, e.g. the French word "duel" can be translated by the English word "duel". If theses words are present into the extracted dictionary, we keep them. If we do not find any translation in our dictionary, we keep the translation. By these means we hope to keep named entities. Several statistics made on our internal test (newstest2010) are shown in Table 3. Its shows that the influence of the detected unknown words is minimal. Only 0.16% of the words in the corpus are actually unknown. However, the main goal of this process is to increase the human readability and usefulness without degrading automatic metrics. We also expect a larger impact in other tasks for which we have
+2
+
+The results of our SMT system for the French­ English and English­French tasks are summarized in Tables 4 and 5, respectively. The MT metric scores are the average of three optimisations performed with different seeds (see Section 3). The numbers in parentheses are the standard deviation of these three values. The standard deviation gives a lower bound of the significance of the difference between two systems. If the difference between two average scores is less than the sum of the standard deviations, we can say that this difference is not significant. The reverse is not true. Note that most of the improvements shown in the tables are small and not significant. However many of the gains are cumulative and the sum of several small gains makes a significant difference. Baseline French­English System The first section of Table 4 shows results of the development of the baseline SMT system, used to generate automatic translations. Although no French translations were generated, we did similar experiments in the English­French direction (first section of Table 5).
+
+http://snowball.tartarus.org/
+
+467
+
+Bitext Eparl+NC Eparl+NC+109 1 Eparl+NC+109 2 Eparl+NC+109 2 +news Eparl+NC+109 2 +IR Eparl+NC+109 2 +news+IR +rescoring with CSLM
+
+#En Words (M) 52 167 284 299 311 371 371
+
+newstest2009 BLEU 26.20 26.84 26.95 27.34 27.14 27.32 27.46
+
+newstest2010 BLEU TER 28.06 (0.22) 56.85 (0.08) 29.08 (0.12) 55.83 (0.14) 29.29 (0.03) 55.77 (0.19) 29.56 (0.14) 55.44 (0.18) 29.43 (0.12) 55.48 (0.06) 29.73 (0.21) 55.16 (0.20) 30.04 54.79
+
+Table 5: English­French results: number of English words (in million) and BLEU scores in the development (newstest2009) and internal test (newstest2010) sets for the different systems developed. The BLEU scores and the number in parentheses are the average and standard deviation over 3 values (see Section 3.)
+
+In both cases the best system is the one trained on the Europarl, News-commentary and 109 2 corpora. This system was used to generate the automatic translations. We did not observe any gain when adding the United Nations data, so we discarded this data. Impact of the Additional Bitexts With the baseline French­English SMT system (see above), we translated the French News corpus to generate an additional bitext (News). We also translated some parts of the French LDC Gigaword corpus, to serve as queries to our IR system (see section 2.2). The resulting additional bitext is referred to as IR. The second section of Tables 4 and 5 summarize the system development including the additional bitexts. With the News additional bitext added to Eparl+NC, we obtain a system of similar performance as the baseline system used to generate the automatic translations, but with less than half of the data. Adding the News corpus to a larger corpus, such as Eparl+NC+109 2 , has less impact but still yields some improvement: 0.1 BLEU point in French­English and 0.3 in English­French. Thus, the News bitext translated from French to English may have more impact when translating from English to French than in the opposite direction. This effect is studied in detail in a separate paper (Lambert et al., 2011). With the IR additional bitext added to Eparl+NC+109 2 , we observe no improvement in French to English, and a very small improvement in English to French. However, added to the base468
+
+line system (Eparl+NC+109 2 ) adapted with the News data, the IR additional bitexts yield a small (0.2 BLEU) improvement in both translation directions. Final System In both translation directions our best system was the one trained on Eparl+NC+109 2 +News+IR. We further achieved small improvements by pruning the phrase-table and by increasing the beam size. To prune the phrase-table, we used the `sigtest-filter' available in Moses (Johnson et al., 2007), more precisely the filter3 . We also build hierarchical systems on the various human translated corpora, using up to 323M words (corpora Eparl+NC+109 2 ). The systems yielded similar results than the phrase-based approach, but required much more computational resources, in particular large amounts of main memory to perform the translations. Running the decoder was actually only possible with binarized rule-tables. Therefore, the hierarchical system was not used in the evaluation system.
+3 The p-value of two-by-two contingency tables (describing the degree of association between a source and a target phrase) is calculated with Fisher exact test. This probability is interpreted as the probability of observing by chance an association that is at least as strong as the given one, and hence as its significance. An important special case of a table occurs when a phrase pair occurs exactly once in the corpus, and each of the component phrases occurs exactly once in its side of the parallel corpus (1-1-1 phrase pairs). In this case the negative log of the p-value is = logN (N is number of sentence pairs in the corpus). is the largest threshold that results in all of the 1-1-1 phrase pairs being included.
+
+6
+
+Conclusions and Further Work
+
+We presented the development of our statistical machine translation systems for the French­English and English­French 2011 WMT shared task. In the official evaluation the English­French system was ranked first according to the BLEU score and the French­English system second.
+
+Acknowledgments
+This work has been partially funded by the European Union under the EuroMatrixPlus project ICT2007.2.2-FP7-231720 and the French government under the ANR project COSMAT ANR-09-CORD004.
+
+References
+Sadaf Abdul-Rauf and Holger Schwenk. 2009. On the use of comparable corpora to improve SMT performance. In Proceedings of the 12th Conference of the European Chapter of the ACL (EACL 2009), pages 16­ 23, Athens, Greece. Ond rej Bojar and Ale s Tamchyna. 2011. Forms Wanted: Training SMT on Monolingual Data. Abstract at Machine Translation and Morphologically-Rich Languages. Research Workshop of the Israel Science Foundation University of Haifa, Israel, January. Peter F. Brown, Stephen A. Della Pietra, Vincent J. Della Pietra, and Robert L. Mercer. 1993. The mathematics of statistical machine translation: Parameter estimation. Computational Linguistics, 19(2):263­311. David Chiang. 2007. Hierarchical phrase-based translation. Computational Linguistics, 33(2):201­228. Qin Gao and Stephan Vogel. 2008. Parallel implementations of word alignment tool. In Software Engineering, Testing, and Quality Assurance for Natural Language Processing, pages 49­57, Columbus, Ohio, June. Association for Computational Linguistics. Nizar Habash. 2008. Four techniques for online handling of out-of-vocabulary words in arabic-english statistical machine translation. In ACL 08. Howard Johnson, Joel Martin, George Foster, and Roland Kuhn. 2007. Improving translation quality by discarding most of the phrasetable. In Proceedings of the 2007 Joint Conference on Empirical Methods in Natural Language Processing and Computational Natural Language Learning (EMNLP-CoNLL), pages 967­ 975, Prague, Czech Republic. Philipp Koehn, Franz Josef Och, and Daniel Marcu. 2003. Statistical phrased-based machine translation. In HLT/NACL, pages 127­133.
+
+Philipp Koehn, Hieu Hoang, Alexandra Birch, Chris Callison-Burch, Marcello Federico, Nicola Bertoldi, Brooke Cowan, Wade Shen, Christine Moran, Richard Zens, Chris Dyer, Ondrej Bojar, Alexandra Constantin, and Evan Herbst. 2007. Moses: Open source toolkit for statistical machine translation. In ACL, demonstration session. Patrik Lambert, Sadaf Abdul-Rauf, and Holger Schwenk. 2010. LIUM SMT machine translation system for WMT 2010. In Proceedings of the Joint Fifth Workshop on Statistical Machine Translation and MetricsMATR, pages 121­126, Uppsala, Sweden, July. Patrik Lambert, Holger Schwenk, Christophe Servan, and Sadaf Abdul-Rauf. 2011. Investigations on translation model adaptation using monolingual data. In Sixth Workshop on SMT, page this volume. Franz Josef Och and Hermann Ney. 2002. Discriminative training and maximum entropy models for statistical machine translation. In Proc. of the Annual Meeting of the Association for Computational Linguistics, pages 295­302. Franz Josef Och and Hermann Ney. 2003. A systematic comparison of various statistical alignement models. Computational Linguistics, 29(1):19­51. Paul Ogilvie and Jamie Callan. 2001. Experiments using the Lemur toolkit. In In Proceedings of the Tenth Text Retrieval Conference (TREC-10), pages 103­108. Holger Schwenk. 2007. Continuous space language models. Computer Speech and Language, 21:492­ 518. Holger Schwenk. 2008. Investigations on largescale lightly-supervised training for statistical machine translation. In IWSLT, pages 182­189. A. Stolcke. 2002. SRILM: an extensible language modeling toolkit. In Proc. of the Int. Conf. on Spoken Language Processing, pages 901­904, Denver, CO.
+
+469
+
+
